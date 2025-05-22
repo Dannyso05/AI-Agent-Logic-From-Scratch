@@ -4,12 +4,13 @@ import openai
 import re
 from typing import List
 from langchain_google_community import GoogleSearchAPIWrapper
+import requests
 
 load_dotenv()
 
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
-def chat_completion(messages: list[dict[str, str]], model: str = "gpt-4o", temperature: float = 0) -> str:
+def chat_completion(messages: list[dict[str, str]], model: str = "gpt-4o-mini", temperature: float = 0) -> str:
     response = openai.responses.create(
         model=model,
         input=messages,
@@ -51,30 +52,37 @@ search_web:
 e.g. search_web: "latest news about AI"
 Searches the web and returns a summary of the top results.
 
+calculate:
+e.g. calculate: "2 + 2 * 3"
+Performs mathematical calculations and returns the result.
+
+stock_lookup:
+e.g. stock_lookup: "AAPL"
+Looks up the current stock price and company information for a given ticker symbol.
+
 Example session:
 
-Question: What are the latest advancements in AI?
-Thought: I need to search the web for the latest news about AI.
-Action: search_web: "latest advancements in AI"
+Question: What is the current price of Apple stock and how much would it cost to buy 100 shares?
+Thought: I need to first look up the current price of Apple stock.
+Action: stock_lookup: "AAPL"
 PAUSE
 CLOSE THE CURRENT LOOP SESSION
 
 You will be called again with this:
 
-Observation: "Recent advancements include GPT-4, advancements in robotics, and breakthroughs in reinforcement learning."
+Observation: "Apple Inc. (AAPL) is currently trading at $175.50"
 
-Thought: I need more information about these advancements.
-Action: search_web: "GPT-4, robotics, reinforcement learning"
+Thought: Now that I have the price, I need to calculate the total cost for 100 shares.
+Action: calculate: "175.50 * 100"
 PAUSE
 
 CLOSE THE CURRENT LOOP SESSION
 You will be called again with this:
 
-Observation: "GPT-4, robotics, reinforcement learning are the latest advancements in AI."
+Observation: "17550.0"
 
-If you have the answer, output it as the Answer.
-
-Answer: The latest advancements in AI include GPT-4, robotics, and reinforcement learning.
+Thought: I have both pieces of information needed to answer the question.
+Answer: Apple Inc. (AAPL) is currently trading at $175.50 per share, and it would cost $17,550 to buy 100 shares.
 
 Make sure to only output one Answer at the end of the loop.
 
@@ -83,13 +91,49 @@ Now it's your turn:
 """.strip()
 
 def search_web(query: str, num_results: int = 3) -> str:
-    search = GoogleSearchAPIWrapper()
-    results = search.results(query, num_results)
-    return results
+    try:
+        search = GoogleSearchAPIWrapper(
+            google_api_key=os.environ.get("GOOGLE_API_KEY"),
+            google_cse_id=os.environ.get("GOOGLE_CSE_ID")
+        )
+        results = search.results(query, num_results)
+        return str(results)
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+def calculate(expression: str) -> str:
+    try:
+        result = eval(expression.replace('"', "").replace(" ", ""))
+        return str(result)
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+def stock_lookup(ticker: str) -> str:
+    try:
+        api_key = os.environ.get("ALPHA_VANTAGE_API_KEY")
+        if not api_key:
+            return "Error: Alpha Vantage API key not found in environment variables"
+            
+        url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={ticker.replace('"', '').replace(" ", '')}&apikey={api_key}"
+        response = requests.get(url)
+        data = response.json()
+        
+        if "Time Series (Daily)" not in data:
+            return f"Error: Could not find data for {ticker}"
+            
+        # Get the most recent date's data
+        time_series = data["Time Series (Daily)"]
+        most_recent_date = max(time_series.keys())
+        most_recent_data = time_series[most_recent_date]
+        
+        current_price = most_recent_data["4. close"]
+        return f"{ticker} is currently trading at ${current_price}"
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 def loop(max_iterations: int = 10, query: str = "") -> None:
     agent = Agent(system=system_prompt)
-    tools = ["search_web"]
+    tools = ["search_web", "calculate", "stock_lookup"]
     next_prompt = query
 
     for _ in range(max_iterations):
@@ -115,4 +159,4 @@ def loop(max_iterations: int = 10, query: str = "") -> None:
 
 # Example run -----------------------------------------------------------------
 if __name__ == "__main__":
-    loop(query="What are the latest advancements in AI?")
+    loop(query="What is the current price of Apple stock and how much would it cost to buy 100 shares?")
