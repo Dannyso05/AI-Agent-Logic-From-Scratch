@@ -159,4 +159,4 @@ def loop(max_iterations: int = 10, query: str = "") -> None:
 
 # Example run -----------------------------------------------------------------
 if __name__ == "__main__":
-    loop(query="What is the current price of Apple stock and how much would it cost to buy 100 shares?")
+    loop(query="What is the current price of Google stock and how much would it cost to buy 100 shares?")

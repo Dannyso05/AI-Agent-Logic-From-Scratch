@@ -62,7 +62,7 @@ async def orchestrate_task(user_query: str) -> str:
     print("\n============================ ORCHESTRATOR PROMPT ============================\n")
     print(orchestrator_prompt)
 
-    orchestrator_response = llm_call(orchestrator_prompt, model="gpt-4o")
+    orchestrator_response = llm_call(orchestrator_prompt, model="gpt-4o-mini")
 
     print("\n============================ ORCHESTRATOR RESPONSE ===========================\n")
     print(orchestrator_response)
@@ -102,7 +102,7 @@ Sub‑questions and answers:
     print("\n============================ AGGREGATOR PROMPT ============================\n")
     print(aggregator_prompt)
 
-    final_response = llm_call(aggregator_prompt, model="gpt-4o")
+    final_response = llm_call(aggregator_prompt, model="gpt-4o-mini")
     return final_response
 
 
@@ -111,7 +111,7 @@ async def main():
     user_query = "How will AI affect future jobs?"
 
     print("\n============================ CASE 1: DIRECT QUESTION ============================\n")
-    print(llm_call(user_query, model="gpt-4o"))
+    print(llm_call(user_query, model="gpt-4o-mini"))
 
     print("\n============================ CASE 2: ORCHESTRATOR PATTERN ============================\n")
     final_output = await orchestrate_task(user_query)
